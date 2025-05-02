@@ -1,0 +1,192 @@
+// File upload handling
+const fileInput = document.createElement("input");
+fileInput.type = "file";
+fileInput.accept = "image/*";
+fileInput.addEventListener("change", handleImageUpload);
+document.body.appendChild(fileInput);
+
+// Canvas setup
+const canvas = document.createElement("canvas");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+document.body.appendChild(canvas);
+const ctx = canvas.getContext("2d");
+
+// Store our particles
+let particles = [];
+let animationId;
+
+function handleImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      setupCanvasAndSamplePixels(img);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function setupCanvasAndSamplePixels(img) {
+  // Cancel any existing animation
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+  }
+
+  // Create a temporary canvas to draw and sample the image
+  const tempCanvas = document.createElement("canvas");
+
+  // Calculate dimensions to fit image within canvas while maintaining aspect ratio
+  const scale =
+    Math.min(canvas.width / img.width, canvas.height / img.height) * 0.8; // 80% of available space
+
+  const scaledWidth = img.width * scale;
+  const scaledHeight = img.height * scale;
+
+  tempCanvas.width = scaledWidth;
+  tempCanvas.height = scaledHeight;
+
+  // Draw image on temporary canvas
+  const tempCtx = tempCanvas.getContext("2d");
+  tempCtx.drawImage(img, 0, 0, scaledWidth, scaledHeight);
+  const imageData = tempCtx.getImageData(0, 0, scaledWidth, scaledHeight);
+
+  // Calculate offset to center the image
+  const offsetX = (canvas.width - scaledWidth) / 2;
+  const offsetY = (canvas.height - scaledHeight) / 2;
+
+  // Clear canvas for animation
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Sample pixels and create particles
+  particles = samplePixels(imageData, 10000, offsetX, offsetY);
+
+  // Start the animation
+  startAnimation();
+}
+
+function samplePixels(imageData, numSamples, offsetX, offsetY) {
+  const particles = [];
+  const { width, height, data } = imageData;
+
+  // Sample random pixels
+  for (let i = 0; i < numSamples; i++) {
+    // Get random position from the image
+    const x = Math.floor(Math.random() * width);
+    const y = Math.floor(Math.random() * height);
+
+    // Calculate the index in the pixel data array
+    const idx = (y * width + x) * 4;
+
+    // Skip fully transparent pixels
+    if (data[idx + 3] < 50) continue;
+
+    // Get the color at that position
+    const color = [
+      data[idx], // R
+      data[idx + 1], // G
+      data[idx + 2], // B
+    ];
+
+    // Generate random starting position across the full canvas
+    const startX = Math.random() * canvas.width;
+    const startY = Math.random() * canvas.height;
+
+    // Add offset to end coordinates to center the image
+    const endX = x + offsetX;
+    const endY = y + offsetY;
+
+    // Create particle
+    particles.push({
+      startCoords: [startX, startY],
+      endCoords: [endX, endY],
+      color: color,
+      progress: 0, // Animation progress from 0 to 1
+      size: Math.random() * 2 + 1, // Random size between 1-3px
+    });
+  }
+
+  return particles;
+}
+
+function startAnimation() {
+  // Reset all particles' progress
+  particles.forEach((p) => (p.progress = 0));
+
+  // Start animation loop
+  animateParticles();
+}
+
+function animateParticles() {
+  // Clear canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Update and draw particles
+  let allComplete = true;
+
+  particles.forEach((particle) => {
+    // Update progress (adjust value to control animation speed)
+    if (particle.progress < 1) {
+      particle.progress += 0.005;
+      allComplete = false;
+    }
+
+    // Calculate current position using easing function
+    const currentX = easeInOutCubic(
+      particle.progress,
+      particle.startCoords[0],
+      particle.endCoords[0] - particle.startCoords[0],
+      1,
+    );
+
+    const currentY = easeInOutCubic(
+      particle.progress,
+      particle.startCoords[1],
+      particle.endCoords[1] - particle.startCoords[1],
+      1,
+    );
+
+    // Draw particle
+    ctx.fillStyle = `rgb(${particle.color[0]}, ${particle.color[1]}, ${particle.color[2]})`;
+    ctx.beginPath();
+    ctx.arc(currentX, currentY, particle.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Continue animation if not all particles are at their destination
+  if (!allComplete) {
+    animationId = requestAnimationFrame(animateParticles);
+  }
+}
+
+// Easing function for smoother animation
+function easeInOutCubic(t, b, c, d) {
+  t /= d / 2;
+  if (t < 1) return (c / 2) * t * t * t + b;
+  t -= 2;
+  return (c / 2) * (t * t * t + 2) + b;
+}
+
+// Resize handler
+window.addEventListener("resize", () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // Redraw particles at current positions if animation is in progress
+  if (particles.length > 0) {
+    animateParticles();
+  }
+});
+
+// Add some basic styling
+document.body.style.margin = "0";
+document.body.style.overflow = "hidden";
+document.body.style.backgroundColor = "black";
+fileInput.style.position = "absolute";
+fileInput.style.zIndex = "100";
+fileInput.style.top = "20px";
+fileInput.style.left = "20px";
