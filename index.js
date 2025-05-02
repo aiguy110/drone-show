@@ -1,9 +1,28 @@
 // File upload handling
+const uploadContainer = document.createElement("div");
+
+const fileLabel = document.createElement("label");
+fileLabel.htmlFor = "file-input";
+fileLabel.className = "btn";
+fileLabel.textContent = "Choose an image";
+fileLabel.style.backgroundColor = "white";
+fileLabel.style.color = "black";
+fileLabel.style.padding = "10px 15px";
+fileLabel.style.borderRadius = "5px";
+fileLabel.style.cursor = "pointer";
+fileLabel.style.fontFamily = "Arial, sans-serif";
+fileLabel.style.fontWeight = "bold";
+fileLabel.style.display = "inline-block";
 const fileInput = document.createElement("input");
+fileInput.id = "file-input";
 fileInput.type = "file";
 fileInput.accept = "image/*";
 fileInput.addEventListener("change", handleImageUpload);
-document.body.appendChild(fileInput);
+fileInput.style.display = "none";
+
+uploadContainer.appendChild(fileLabel);
+uploadContainer.appendChild(fileInput);
+document.body.appendChild(uploadContainer);
 
 // Canvas setup
 const canvas = document.createElement("canvas");
@@ -224,7 +243,9 @@ window.addEventListener("resize", () => {
 document.body.style.margin = "0";
 document.body.style.overflow = "hidden";
 document.body.style.backgroundColor = "black";
-fileInput.style.position = "absolute";
-fileInput.style.zIndex = "100";
-fileInput.style.top = "20px";
-fileInput.style.left = "20px";
+// Since fileInput has display: none already set elsewhere in the code,
+// we now need to style the uploadContainer and fileLabel instead
+uploadContainer.style.position = "absolute";
+uploadContainer.style.zIndex = "100";
+uploadContainer.style.top = "20px";
+uploadContainer.style.left = "20px";
