@@ -73,17 +73,55 @@ function samplePixels(imageData, numSamples, offsetX, offsetY) {
   const particles = [];
   const { width, height, data } = imageData;
 
-  // Sample random pixels
+  // Create brightness map for weighted sampling
+  const brightnessMap = [];
+  let totalBrightness = 0;
+
+  // Calculate brightness for each pixel
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+
+      // Skip fully transparent pixels
+      if (data[idx + 3] < 50) {
+        brightnessMap.push(0);
+        continue;
+      }
+
+      // Calculate brightness (higher value = lighter pixel)
+      const brightness =
+        0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+
+      brightnessMap.push(brightness);
+      totalBrightness += brightness;
+    }
+  }
+
+  // Sample pixels with preference for lighter ones
   for (let i = 0; i < numSamples; i++) {
-    // Get random position from the image
-    const x = Math.floor(Math.random() * width);
-    const y = Math.floor(Math.random() * height);
+    // Choose a random brightness value within the total range
+    const targetBrightness = Math.random() * totalBrightness;
+
+    // Find the corresponding pixel
+    let brightnessSoFar = 0;
+    let selectedPixel = -1;
+
+    for (let j = 0; j < brightnessMap.length; j++) {
+      brightnessSoFar += brightnessMap[j];
+      if (brightnessSoFar >= targetBrightness) {
+        selectedPixel = j;
+        break;
+      }
+    }
+
+    if (selectedPixel === -1) continue; // Skip if no valid pixel found
+
+    // Convert the 1D position back to 2D coordinates
+    const x = selectedPixel % width;
+    const y = Math.floor(selectedPixel / width);
 
     // Calculate the index in the pixel data array
     const idx = (y * width + x) * 4;
-
-    // Skip fully transparent pixels
-    if (data[idx + 3] < 50) continue;
 
     // Get the color at that position
     const color = [
@@ -131,7 +169,7 @@ function animateParticles() {
   particles.forEach((particle) => {
     // Update progress (adjust value to control animation speed)
     if (particle.progress < 1) {
-      particle.progress += 0.005;
+      particle.progress += 0.001;
       allComplete = false;
     }
 
